@@ -1,24 +1,32 @@
+import 'package:provider/provider.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-import 'flutter_flow/flutter_flow_theme.dart';
+import 'auth/firebase_auth/firebase_user_provider.dart';
+import 'auth/firebase_auth/auth_util.dart';
+
+import 'backend/firebase/firebase_config.dart';
 import 'flutter_flow/flutter_flow_util.dart';
-import 'flutter_flow/nav/nav.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoRouter.optionURLReflectsImperativeAPIs = true;
   usePathUrlStrategy();
 
-  await FlutterFlowTheme.initialize();
+  await initFirebase();
 
-  runApp(const MyApp());
+  final appState = FFAppState(); // Initialize FFAppState
+  await appState.initializePersistedState();
+
+  runApp(ChangeNotifierProvider(
+    create: (context) => appState,
+    child: MyApp(),
+  ));
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
   // This widget is the root of your application.
   @override
   State<MyApp> createState() => _MyAppState();
@@ -27,11 +35,36 @@ class MyApp extends StatefulWidget {
       context.findAncestorStateOfType<_MyAppState>()!;
 }
 
+class MyAppScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+      };
+}
+
 class _MyAppState extends State<MyApp> {
-  ThemeMode _themeMode = FlutterFlowTheme.themeMode;
+  ThemeMode _themeMode = ThemeMode.system;
 
   late AppStateNotifier _appStateNotifier;
   late GoRouter _router;
+  String getRoute([RouteMatch? routeMatch]) {
+    final RouteMatch lastMatch =
+        routeMatch ?? _router.routerDelegate.currentConfiguration.last;
+    final RouteMatchList matchList = lastMatch is ImperativeRouteMatch
+        ? lastMatch.matches
+        : _router.routerDelegate.currentConfiguration;
+    return matchList.uri.toString();
+  }
+
+  List<String> getRouteStack() =>
+      _router.routerDelegate.currentConfiguration.matches
+          .map((e) => getRoute(e))
+          .toList();
+
+  late Stream<BaseAuthUser> userStream;
+
+  final authUserSub = authenticatedUserStream.listen((_) {});
 
   @override
   void initState() {
@@ -39,18 +72,35 @@ class _MyAppState extends State<MyApp> {
 
     _appStateNotifier = AppStateNotifier.instance;
     _router = createRouter(_appStateNotifier);
+    userStream = nexoFirebaseUserStream()
+      ..listen((user) {
+        _appStateNotifier.update(user);
+      });
+    jwtTokenStream.listen((_) {});
+    Future.delayed(
+      Duration(milliseconds: 1000),
+      () => _appStateNotifier.stopShowingSplashImage(),
+    );
   }
 
-  void setThemeMode(ThemeMode mode) => setState(() {
+  @override
+  void dispose() {
+    authUserSub.cancel();
+
+    super.dispose();
+  }
+
+  void setThemeMode(ThemeMode mode) => safeSetState(() {
         _themeMode = mode;
-        FlutterFlowTheme.saveThemeMode(mode);
       });
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Nexo Construye',
-      localizationsDelegates: const [
+      debugShowCheckedModeBanner: false,
+      title: 'Nexo',
+      scrollBehavior: MyAppScrollBehavior(),
+      localizationsDelegates: [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
@@ -58,10 +108,6 @@ class _MyAppState extends State<MyApp> {
       supportedLocales: const [Locale('en', '')],
       theme: ThemeData(
         brightness: Brightness.light,
-        useMaterial3: false,
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
         useMaterial3: false,
       ),
       themeMode: _themeMode,

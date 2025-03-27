@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /Servicios/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    match /Users/{document} {
+      allow create: if request.auth.uid == document;
+      allow read: if request.auth.uid == document;
+      allow write: if request.auth.uid == document;
+      allow delete: if request.auth.uid == document;
+    }
+
+    match /FechasReservadas/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    match /Users/{parent}/Reviews/{document} {
+      allow create: if request.auth.uid == parent;
+      allow read: if request.auth.uid == parent;
+      allow write: if request.auth.uid == parent;
+      allow delete: if request.auth.uid == parent;
+    }
+
+    match /Users/{parent}/Portafolio/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    match /{path=**}/Portafolio/{document} {
+      allow read: if true;
+    }
+
+
+    match /Users/{parent}/Agenda/{document} {
+      allow create: if request.auth.uid == parent;
+      allow read: if request.auth.uid == parent;
+      allow write: if request.auth.uid == parent;
+      allow delete: if request.auth.uid == parent;
+    }
+
+    match /Conversacion/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    match /Conversacion/{parent}/Mensajes/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    match /{path=**}/Mensajes/{document} {
+      allow read: if true;
+    }
+
+  }
+}

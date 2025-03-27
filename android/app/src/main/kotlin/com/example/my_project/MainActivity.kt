@@ -1,4 +1,4 @@
-package com.mycompany.nexoconstruye
+package com.labsol.nexo
 
 import io.flutter.embedding.android.FlutterActivity
 

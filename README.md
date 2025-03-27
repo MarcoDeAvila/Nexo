@@ -1,4 +1,4 @@
-# Nexo Construye
+# Nexo
 
 A new Flutter project.
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,11 +18,14 @@ import '../main.dart';
 export 'lat_lng.dart';
 export 'place.dart';
 export 'uploaded_file.dart';
+export '../app_state.dart';
 export 'flutter_flow_model.dart';
 export 'dart:math' show min, max;
 export 'dart:typed_data' show Uint8List;
 export 'dart:convert' show jsonEncode, jsonDecode;
 export 'package:intl/intl.dart';
+export 'package:cloud_firestore/cloud_firestore.dart'
+    show DocumentReference, FirebaseFirestore;
 export 'package:page_transition/page_transition.dart';
 export 'nav/nav.dart';
 
@@ -89,10 +93,18 @@ String formatNumber(
           formattedValue = NumberFormat.decimalPattern().format(value);
           break;
         case DecimalType.periodDecimal:
-          formattedValue = NumberFormat.decimalPattern('en_US').format(value);
+          if (currency != null) {
+            formattedValue = NumberFormat('#,##0.00', 'en_US').format(value);
+          } else {
+            formattedValue = NumberFormat.decimalPattern('en_US').format(value);
+          }
           break;
         case DecimalType.commaDecimal:
-          formattedValue = NumberFormat.decimalPattern('es_PA').format(value);
+          if (currency != null) {
+            formattedValue = NumberFormat('#,##0.00', 'es_PA').format(value);
+          } else {
+            formattedValue = NumberFormat.decimalPattern('es_PA').format(value);
+          }
           break;
       }
       break;
@@ -239,14 +251,25 @@ extension FFTextEditingControllerExt on TextEditingController? {
 }
 
 extension IterableExt<T> on Iterable<T> {
-  List<T> sortedList<S extends Comparable>([S Function(T)? keyOf]) => toList()
-    ..sort(keyOf == null ? null : ((a, b) => keyOf(a).compareTo(keyOf(b))));
+  List<T> sortedList<S extends Comparable>(
+      {S Function(T)? keyOf, bool desc = false}) {
+    final sortedAscending = toList()
+      ..sort(keyOf == null ? null : ((a, b) => keyOf(a).compareTo(keyOf(b))));
+    if (desc) {
+      return sortedAscending.reversed.toList();
+    }
+    return sortedAscending;
+  }
 
   List<S> mapIndexed<S>(S Function(int, T) func) => toList()
       .asMap()
       .map((index, value) => MapEntry(index, func(index, value)))
       .values
       .toList();
+}
+
+extension StringDocRef on String {
+  DocumentReference get ref => FirebaseFirestore.instance.doc(this);
 }
 
 void setDarkModeSetting(BuildContext context, ThemeMode themeMode) =>
@@ -264,12 +287,12 @@ void showSnackbar(
       content: Row(
         children: [
           if (loading)
-            const Padding(
+            Padding(
               padding: EdgeInsetsDirectional.only(end: 10.0),
-              child: SizedBox(
+              child: Container(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(
+                child: const CircularProgressIndicator(
                   color: Colors.white,
                 ),
               ),
@@ -360,17 +383,8 @@ void fixStatusBarOniOS16AndBelow(BuildContext context) {
   }
 }
 
-extension ListUniqueExt<T> on Iterable<T> {
-  List<T> unique(dynamic Function(T) getKey) {
-    var distinctSet = <dynamic>{};
-    var distinctList = <T>[];
-    for (var item in this) {
-      if (distinctSet.add(getKey(item))) {
-        distinctList.add(item);
-      }
-    }
-    return distinctList;
-  }
+extension ColorOpacityExt on Color {
+  Color applyAlpha(double val) => withValues(alpha: val);
 }
 
 String roundTo(double value, int decimalPoints) {
@@ -409,3 +423,21 @@ double computeGradientAlignmentY(double evaluatedAngle) {
   }
   return double.parse(roundTo(y, 2));
 }
+
+extension ListUniqueExt<T> on Iterable<T> {
+  List<T> unique(dynamic Function(T) getKey) {
+    var distinctSet = <dynamic>{};
+    var distinctList = <T>[];
+    for (var item in this) {
+      if (distinctSet.add(getKey(item))) {
+        distinctList.add(item);
+      }
+    }
+    return distinctList;
+  }
+}
+
+String getCurrentRoute(BuildContext context) =>
+    context.mounted ? MyApp.of(context).getRoute() : '';
+List<String> getCurrentRouteStack(BuildContext context) =>
+    context.mounted ? MyApp.of(context).getRouteStack() : [];
